@@ -35,6 +35,7 @@ module.exports = {
           userEmail,
           userPassword,
           userPhone,
+          userDateOfBirth,
           userAddressLine1,
           userAddressLine2,
           userAddressPostcode,
@@ -48,12 +49,13 @@ module.exports = {
           '${user.userEmail}',
           '${user.hashPassword}',
           '${user.userPhone}',
+          '${user.userDateOfBirth}',
           '${user.userAddressLine1}',
           '${user.userAddressLine2}',
           '${user.userAddressPostcode}',
           '${user.userGender}',
           '${user.userRole}',
-          '${user.userMeta}'
+          '${typeof user.userMeta === 'object' ? JSON.stringify(user.userMeta) : user.userMeta}'
           );`
       );
       if (addUser) return user;
@@ -62,7 +64,7 @@ module.exports = {
       throw new Error(`Could not add user with userID:${user.userID} ${error}`);
     }
   },
-  getUserByuserID: async function (userID) {
+  getUserByUserID: async function (userID) {
     try {
       const driverOrderList = await sqlQuery(`SELECT * from db_users WHERE userID='${userID}'`);
       if (driverOrderList) return driverOrderList;
@@ -71,7 +73,6 @@ module.exports = {
       return error;
     }
   },
-  
   getUserByUserEmail: async function (userEmail) {
     try {
       const driverOrderList = await sqlQuery(`SELECT * from db_users WHERE userEmail='${userEmail}'`);
