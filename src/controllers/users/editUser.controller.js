@@ -1,74 +1,114 @@
-const bcrypt = require("bcrypt")
-const { v4: uuidv4 } = require('uuid');
-const database = require("../../Modules/config")
 const moment = require('moment')
+const database = require("../../Modules/config");
 
 module.exports = (dependencies) => {
-    return async (req, res, next) => {
-        console.log("Body",req.body)
-        const userID = req.body.userID;
-        const userFirstName = req.body.userFirstName;
-        const userSurname = req.body.userSurname;
-        const userAddressLine1 = req.body.userAddressLine1;
-        const userAddressLine2 = req.body.userAddressLine2;
-        const userAddressPostcode = req.body.userAddressPostcode;
-        const userGender = req.body.userGender;
-        const userDateOfBirth = req.body.userDateOfBirth;
-        const userRole = req.body.userRole;
-        
-        let dataStore = {};
+    return async (req, res) => {
         try {
+            const {
+                userID,
+                userFirstName,
+                userSurname,
+                userAddressLine1,
+                userAddressLine2,
+                userAddressPostcode,
+                userGender,
+                userDateOfBirth,
+                userAccountApproved,
+                userMeta,
+                userRole
+            } = req.body;
+
             if (!userID) {
-                throw new Error("UserId not found");
-            } else {
-                dataStore.userID = userID;
-                dataStore.userFirstName = userFirstName;
-                dataStore.userSurname = userSurname;
-                dataStore.userAddressLine1 = userAddressLine1;
-                dataStore.userAddressLine2 = userAddressLine2;
-                dataStore.userAddressPostcode = userAddressPostcode;
-                dataStore.userGender = userGender;
-                let dateRecord= userDateOfBirth.toString().split("/")
-                dataStore.userDateOfBirth =  moment(`${dateRecord[2]}/${dateRecord[1]}/${dateRecord[0]}`).format("YYYY-MM-DD");
-                console.log(dataStore);
-                dataStore.userRole = userRole.toString();
-
-                async function updateData() {
-                    con = database();
-
-                    await new Promise((resolve, reject) => {
-                        con.query(
-                            `UPDATE db_users SET
-                                userFirstName = '${dataStore.userFirstName}',
-                                userSurname = '${dataStore.userSurname}',
-                                userAddressLine1 = '${dataStore.userAddressLine1}',
-                                userAddressLine2 = '${dataStore.userAddressLine2}',
-                                userAddressPostcode = '${dataStore.userAddressPostcode}',
-                                userGender = '${userGender}',
-                                userDateOfBirth = '${dataStore.userDateOfBirth}',
-                                userRole = '${dataStore.userRole}',
-                                WHERE userID = '${dataStore.userID}';`,
-                            function (err, result, fields) {
-                                if (err) {
-                                    dataStore.update = err
-                                    reject(err)
-                                } else {
-                                    
-                                    // dataStore.update = result
-                                    resolve(result);
-                                }
-                            })
-                    }
-                    )
-                }
-
-                await updateData();
-
-                res.send({ "status": true, "msg": 'success', data: dataStore });
+                throw new Error("UserID not found");
             }
-        } catch (error) {
-            res.status(400).json({ status: false, msg: error.toString() });
-        }
-    }
-}
+            //If userMeta is Not Object
+            if (userMeta && (typeof userMeta !== 'object')) {
+                throw new Error("userMeta must be an object");
+            }
+            const con = database(); // Assuming this returns a valid connection object
 
+            let updateFields = [];
+            let values = [];
+
+            if (userFirstName) {
+                updateFields.push('userFirstName = ?');
+                values.push(userFirstName);
+            }
+            if (userSurname) {
+                updateFields.push('userSurname = ?');
+                values.push(userSurname);
+            }
+            if (userAddressLine1) {
+                updateFields.push('userAddressLine1 = ?');
+                values.push(userAddressLine1);
+            }
+            if (userAddressLine2) {
+                updateFields.push('userAddressLine2 = ?');
+                values.push(userAddressLine2);
+            }
+            if (userAddressPostcode) {
+                updateFields.push('userAddressPostcode = ?');
+                values.push(userAddressPostcode);
+            }
+            if (userGender) {
+                updateFields.push('userGender = ?');
+                values.push(userGender);
+            }
+            if (userDateOfBirth) {
+                updateFields.push('userDateOfBirth = ?');
+                values.push(userDateOfBirth);
+            }
+            if (userAccountApproved) {
+                updateFields.push('userAccountApproved = ?');
+                values.push(userAccountApproved);
+            }
+            if (userRole) {
+                updateFields.push('userRole = ?');
+                values.push(userRole);
+            }
+            if (userMeta) {
+                updateFields.push('userMeta = ?');
+                values.push(JSON.stringify(userMeta));
+            }
+
+            if (updateFields.length === 0) {
+                return res.send({ status: true, msg: 'No fields to update', data: {} });
+            }
+
+            const query = `
+                UPDATE db_users SET
+                ${updateFields.join(', ')}
+                WHERE userID = ?;
+            `;
+
+            values.push(userID);
+
+            await new Promise((resolve, reject) => {
+                con.query(query, values, function (err, result, fields) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+
+            const dataStore = {
+                userID,
+                userFirstName,
+                userSurname,
+                userAddressLine1,
+                userAddressLine2,
+                userAddressPostcode,
+                userGender,
+                userDateOfBirth,
+                userRole
+            };
+
+            res.send({ status: true, msg: 'success', data: dataStore });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ status: false, msg: 'Internal Server Error' });
+        }
+    };
+};
